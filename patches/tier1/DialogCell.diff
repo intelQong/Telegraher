@@ -1,0 +1,30 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java b/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
+index d6a968ce9..4c8089946 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
+@@ -48,6 +48,7 @@ import androidx.collection.LongSparseArray;
+ import androidx.core.content.ContextCompat;
+ import androidx.core.graphics.ColorUtils;
+ 
++import com.evildayz.code.telegraher.ThePenisMightierThanTheSword;
+ import org.telegram.messenger.AndroidUtilities;
+ import org.telegram.messenger.ApplicationLoader;
+ import org.telegram.messenger.ChatObject;
+@@ -1098,7 +1099,7 @@ public class DialogCell extends BaseCell {
+                         } else {
+                             drawVerified =!forbidVerified && user.verified;
+                         }
+-                        drawPremium = MessagesController.getInstance(currentAccount).isPremiumUser(user) && UserConfig.getInstance(currentAccount).clientUserId != user.id && user.id != 0;
++                        drawPremium = ThePenisMightierThanTheSword.starrMark(MessagesController.getInstance(currentAccount).isPremiumUser(user)) && UserConfig.getInstance(currentAccount).clientUserId != user.id && user.id != 0;
+                         if (drawPremium) {
+                             if (user.emoji_status instanceof TLRPC.TL_emojiStatusUntil && ((TLRPC.TL_emojiStatusUntil) user.emoji_status).until > (int) (System.currentTimeMillis() / 1000)) {
+                                 nameLayoutEllipsizeByGradient = true;
+@@ -2926,7 +2927,7 @@ public class DialogCell extends BaseCell {
+             drawRevealBackground = Math.abs(translationX) >= getMeasuredWidth() * 0.45f;
+             if (prevValue != drawRevealBackground && archiveHidden == SharedConfig.archiveHidden) {
+                 try {
+-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
++                    if (!MessagesController.getGlobalTelegraherSettings().getBoolean("HardwareDisableVibro", false)) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                 } catch (Exception ignore) {}
+             }
+         }

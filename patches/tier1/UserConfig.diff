@@ -1,0 +1,124 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java b/TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java
+index 253bdd2b1..27c9afad9 100644
+--- a/TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java
++++ b/TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java
+@@ -12,6 +12,7 @@ import android.content.Context;
+ import android.content.SharedPreferences;
+ import android.os.SystemClock;
+ import android.util.Base64;
++import android.util.SparseArray;
+ 
+ import org.telegram.tgnet.SerializedData;
+ import org.telegram.tgnet.TLRPC;
+@@ -25,8 +26,6 @@ import java.util.List;
+ public class UserConfig extends BaseController {
+ 
+     public static int selectedAccount;
+-    public final static int MAX_ACCOUNT_DEFAULT_COUNT = 3;
+-    public final static int MAX_ACCOUNT_COUNT = 4;
+ 
+     private final Object sync = new Object();
+     private boolean configLoaded;
+@@ -79,14 +78,15 @@ public class UserConfig extends BaseController {
+     public volatile byte[] savedSaltedPassword;
+     public volatile long savedPasswordTime;
+ 
+-    private static volatile UserConfig[] Instance = new UserConfig[UserConfig.MAX_ACCOUNT_COUNT];
++    private static SparseArray<UserConfig> Instance = new SparseArray<>();
++
+     public static UserConfig getInstance(int num) {
+-        UserConfig localInstance = Instance[num];
++        UserConfig localInstance = Instance.get(num);
+         if (localInstance == null) {
+             synchronized (UserConfig.class) {
+-                localInstance = Instance[num];
++                localInstance = Instance.get(num);
+                 if (localInstance == null) {
+-                    Instance[num] = localInstance = new UserConfig(num);
++                    Instance.put(num, localInstance = new UserConfig(num));
+                 }
+             }
+         }
+@@ -95,8 +95,8 @@ public class UserConfig extends BaseController {
+ 
+     public static int getActivatedAccountsCount() {
+         int count = 0;
+-        for (int a = 0; a < MAX_ACCOUNT_COUNT; a++) {
+-            if (AccountInstance.getInstance(a).getUserConfig().isClientActivated()) {
++        for (int a : SharedConfig.activeAccounts) {
++            if (getInstance(a).isClientActivated()) {
+                 count++;
+             }
+         }
+@@ -108,7 +108,7 @@ public class UserConfig extends BaseController {
+     }
+ 
+     public static boolean hasPremiumOnAccounts() {
+-        for (int a = 0; a < MAX_ACCOUNT_COUNT; a++) {
++        for (int a : SharedConfig.activeAccounts)  {
+             if (AccountInstance.getInstance(a).getUserConfig().isClientActivated() && AccountInstance.getInstance(a).getUserConfig().getUserConfig().isPremium()) {
+                 return true;
+             }
+@@ -158,6 +158,8 @@ public class UserConfig extends BaseController {
+                     editor.putBoolean("hasValidDialogLoadIds", hasValidDialogLoadIds);
+                     editor.putInt("sharingMyLocationUntil", sharingMyLocationUntil);
+                     editor.putInt("lastMyLocationShareTime", lastMyLocationShareTime);
++//                    editor.putString("dsBrand", "Nokia");
++//                    editor.putString("dsModel", "3310");
+                     editor.putBoolean("filtersLoaded", filtersLoaded);
+                     editor.putStringSet("awaitBillingProductIds", new HashSet<>(awaitBillingProductIds));
+                     if (billingPaymentPurpose != null) {
+@@ -220,7 +222,7 @@ public class UserConfig extends BaseController {
+                         editor.remove("user");
+                     }
+ 
+-                    editor.commit();
++                    editor.apply();
+                 } catch (Exception e) {
+                     FileLog.e(e);
+                 }
+@@ -229,7 +231,7 @@ public class UserConfig extends BaseController {
+     }
+ 
+     public static boolean isValidAccount(int num) {
+-         return num >= 0 && num < UserConfig.MAX_ACCOUNT_COUNT && getInstance(num).isClientActivated();
++        return num >= 0 && SharedConfig.activeAccounts.contains(num) && getInstance(num).isClientActivated();
+     }
+ 
+     public boolean isClientActivated() {
+@@ -450,7 +452,7 @@ public class UserConfig extends BaseController {
+         lastHintsSyncTime = (int) (System.currentTimeMillis() / 1000) - 25 * 60 * 60;
+         resetSavedPassword();
+         boolean hasActivated = false;
+-        for (int a = 0; a < MAX_ACCOUNT_COUNT; a++) {
++        for (int a : SharedConfig.activeAccounts) {
+             if (AccountInstance.getInstance(a).getUserConfig().isClientActivated()) {
+                 hasActivated = true;
+                 break;
+@@ -467,7 +469,7 @@ public class UserConfig extends BaseController {
+     }
+ 
+     public void setPinnedDialogsLoaded(int folderId, boolean loaded) {
+-        getPreferences().edit().putBoolean("2pinnedDialogsLoaded" + folderId, loaded).commit();
++        getPreferences().edit().putBoolean("2pinnedDialogsLoaded" + folderId, loaded).apply();
+     }
+ 
+     public static final int i_dialogsLoadOffsetId = 0;
+@@ -482,7 +484,7 @@ public class UserConfig extends BaseController {
+     }
+ 
+     public void setTotalDialogsCount(int folderId, int totalDialogsLoadCount) {
+-        getPreferences().edit().putInt("2totalDialogsLoadCount" + (folderId == 0 ? "" : folderId), totalDialogsLoadCount).commit();
++        getPreferences().edit().putInt("2totalDialogsLoadCount" + (folderId == 0 ? "" : folderId), totalDialogsLoadCount).apply();
+     }
+ 
+     public long[] getDialogLoadOffsets(int folderId) {
+@@ -505,7 +507,7 @@ public class UserConfig extends BaseController {
+         editor.putLong("2dialogsLoadOffsetChannelId" + (folderId == 0 ? "" : folderId), dialogsLoadOffsetChannelId);
+         editor.putLong("2dialogsLoadOffsetAccess" + (folderId == 0 ? "" : folderId), dialogsLoadOffsetAccess);
+         editor.putBoolean("hasValidDialogLoadIds", true);
+-        editor.commit();
++        editor.apply();
+     }
+ 
+     public boolean isPremium() {

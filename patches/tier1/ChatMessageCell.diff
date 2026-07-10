@@ -1,0 +1,234 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java b/TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
+index 8f745cc92..16d538cd3 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/Cells/ChatMessageCell.java
+@@ -77,6 +77,7 @@ import androidx.core.content.ContextCompat;
+ import androidx.core.graphics.ColorUtils;
+ import androidx.core.math.MathUtils;
+ 
++import com.evildayz.code.telegraher.ThePenisMightierThanTheSword;
+ import org.telegram.PhoneFormat.PhoneFormat;
+ import org.telegram.messenger.AccountInstance;
+ import org.telegram.messenger.AndroidUtilities;
+@@ -1169,6 +1170,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+ 
+     private final TransitionParams transitionParams = new TransitionParams();
+     private boolean edited;
++    private boolean deleted;
+     private boolean imageDrawn;
+     private boolean photoImageOutOfBounds;
+ 
+@@ -2319,7 +2321,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+             float p = a / 360f;
+             if (Math.abs(currentMessageObject.audioProgress - p) > 0.9f) {
+                 if (roundSeekbarOutAlpha == 0) {
+-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
++                    if (!MessagesController.getGlobalTelegraherSettings().getBoolean("HardwareDisableVibro", false)) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                 }
+                 roundSeekbarOutAlpha = 1f;
+                 roundSeekbarOutProgress = currentMessageObject.audioProgress;
+@@ -3715,6 +3717,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+     }
+ 
+     public void updateAnimatedEmojis() {
++        if (MessagesController.getGlobalTelegraherSettings().getBoolean("GraheriumDisablePremiumEmojis", false)) return;
+         if (!imageReceiversAttachState) {
+             return;
+         }
+@@ -4007,6 +4010,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+             if (currentMessageObject != null && !currentMessageObject.mediaExists) {
+                 int canDownload = DownloadController.getInstance(currentAccount).canDownloadMedia(currentMessageObject.messageOwner);
+                 TLRPC.Document document = currentMessageObject.getDocument();
++                if (MessageObject.isAnimatedStickerDocument(document, true)) return;
+                 boolean loadDocumentFromImageReceiver = MessageObject.isStickerDocument(document) || MessageObject.isAnimatedStickerDocument(document, true) || MessageObject.isGifDocument(document) || MessageObject.isRoundVideoDocument(document);
+                 if (!loadDocumentFromImageReceiver) {
+                     TLRPC.PhotoSize photo = document == null ? FileLoader.getClosestPhotoSizeWithSize(currentMessageObject.photoThumbs, AndroidUtilities.getPhotoSize()) : null;
+@@ -4024,9 +4028,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                     updateButtonState(false, false, false);
+                 }
+             }
+-            animatedEmojiReplyStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, this, false, animatedEmojiReplyStack, replyTextLayout);
+-            animatedEmojiDescriptionStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, this, false, animatedEmojiDescriptionStack, descriptionLayout);
+-            updateAnimatedEmojis();
++            if(!MessagesController.getGlobalTelegraherSettings().getBoolean("GraheriumDisablePremiumEmojis", false)){
++                animatedEmojiReplyStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, this, false, animatedEmojiReplyStack, replyTextLayout);
++                animatedEmojiDescriptionStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, this, false, animatedEmojiDescriptionStack, descriptionLayout);
++                updateAnimatedEmojis();
++            }
+         } else {
+             radialProgress.onDetachedFromWindow();
+             videoRadialProgress.onDetachedFromWindow();
+@@ -4047,6 +4053,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+ 
+             if (currentMessageObject != null && !currentMessageObject.mediaExists && !currentMessageObject.putInDownloadsStore && !DownloadController.getInstance(currentAccount).isDownloading(currentMessageObject.messageOwner.id)) {
+                 TLRPC.Document document = currentMessageObject.getDocument();
++                if (MessageObject.isAnimatedStickerDocument(document, true)) return;
+                 boolean loadDocumentFromImageReceiver = MessageObject.isStickerDocument(document) || MessageObject.isAnimatedStickerDocument(document, true) || MessageObject.isGifDocument(document) || MessageObject.isRoundVideoDocument(document);
+                 if (!loadDocumentFromImageReceiver) {
+                     if (document != null) {
+@@ -4059,9 +4066,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                     }
+                 }
+             }
+-            AnimatedEmojiSpan.release(this, animatedEmojiDescriptionStack);
+-            AnimatedEmojiSpan.release(this, animatedEmojiReplyStack);
+-            AnimatedEmojiSpan.release(this, animatedEmojiStack);
++            if(!MessagesController.getGlobalTelegraherSettings().getBoolean("GraheriumDisablePremiumEmojis", false)) {
++                AnimatedEmojiSpan.release(this, animatedEmojiDescriptionStack);
++                AnimatedEmojiSpan.release(this, animatedEmojiReplyStack);
++                AnimatedEmojiSpan.release(this, animatedEmojiStack);
++            }
+         }
+     }
+ 
+@@ -5907,7 +5916,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+ 
+                 int maxVote = 0;
+                 if (!animatePollAnswer && pollVoteInProgress && vibrateOnPollVote) {
+-                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
++                    if (!MessagesController.getGlobalTelegraherSettings().getBoolean("HardwareDisableVibro", false)) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                 }
+                 animatePollAnswerAlpha = animatePollAnswer = attachedToWindow && (pollVoteInProgress || pollUnvoteInProgress);
+                 ArrayList<PollButton> previousPollButtons = null;
+@@ -6347,6 +6356,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                         }
+                     } else {
+                         currentMapProvider = MessagesController.getInstance(messageObject.currentAccount).mapProvider;
++                        if (currentMapProvider != -1) {
++                            currentMapProvider = 2;
++                        }
+                     }
+                     if (locationLoadingThumb == null) {
+                         SvgHelper.SvgDrawable svgThumb = DocumentObject.getSvgThumb(R.raw.map_placeholder, Theme.key_chat_outLocationIcon, (Theme.isCurrentThemeDark() ? 3 : 6) * .12f);
+@@ -6414,7 +6426,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                     if (!(drawTopic && (currentMessageObject != null && currentMessageObject.replyMessageObject != null || forwardedNameLayout != null && forwardedNameLayout[0] != null))) {
+                         additionHeight -= AndroidUtilities.dp(17);
+                     }
+-                } else if (messageObject.isAnyKindOfSticker()) {
++                } else if (
++                    !MessagesController.getGlobalTelegraherSettings().getBoolean("HideStickers", false) && messageObject.isAnyKindOfSticker()
++                        && !(
++                            MessagesController.getGlobalTelegraherSettings().getBoolean("GraheriumDisablePremiumEmojis", false)
++                                && messageObject.isAnimatedAnimatedEmoji()
++                        )
++                        && !(
++                            MessagesController.getGlobalTelegraherSettings().getBoolean("HideVideoStickers", false)
++                                && messageObject.isVideoSticker()
++                        )
++                        && !(
++                            MessagesController.getGlobalTelegraherSettings().getBoolean("HideAnimatedStickers", false)
++                                && messageObject.isAnimatedSticker()
++                        )
++                ) {
+ 
+                     drawBackground = false;
+                     boolean isWebpSticker = messageObject.type == MessageObject.TYPE_STICKER;
+@@ -6452,21 +6478,16 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                         maxHeight = maxWidth = (int) (Math.min(getParentWidth(), AndroidUtilities.displaySize.y) * 0.5f);
+                     }
+                     String filter;
+-                    if (messageObject.isAnimatedEmoji() || messageObject.isDice()) {
+-                        float zoom = MessagesController.getInstance(currentAccount).animatedEmojisZoom;
+-                        photoWidth = (int) ((photoWidth / 512.0f) * maxWidth * zoom);
+-                        photoHeight = (int) ((photoHeight / 512.0f) * maxHeight * zoom);
+-                    } else {
+-                        if (photoWidth == 0) {
+-                            photoHeight = (int) maxHeight;
+-                            photoWidth = photoHeight + AndroidUtilities.dp(100);
+-                        }
+-                        photoHeight *= maxWidth / (float) photoWidth;
+-                        photoWidth = (int) maxWidth;
+-                        if (photoHeight > maxHeight) {
+-                            photoWidth *= maxHeight / photoHeight;
+-                            photoHeight = (int) maxHeight;
+-                        }
++                    if (photoWidth == 0) {
++                        photoHeight = (int) maxHeight;
++                        photoWidth = photoHeight + AndroidUtilities.dp(100);
++                    }
++                    photoHeight *= maxWidth / (float) photoWidth;
++                    photoHeight /= ThePenisMightierThanTheSword.stickerSizeMult();
++                    photoWidth = (int) (maxWidth / ThePenisMightierThanTheSword.stickerSizeMult());
++                    if (photoHeight > maxHeight) {
++                        photoWidth *= maxHeight / photoHeight;
++                        photoHeight = (int) maxHeight;
+                     }
+                     Object parentObject = messageObject;
+                     int w = (int) (photoWidth / AndroidUtilities.density);
+@@ -6576,7 +6597,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                     if (photoImage.getBitmap() != null && !photoImage.getBitmap().isRecycled() && currentMessageObject.hasMediaSpoilers() && !currentMessageObject.isMediaSpoilersRevealed) {
+                         blurredPhotoImage.setImageBitmap(Utilities.stackBlurBitmapMax(photoImage.getBitmap()));
+                     }
+-                } else {
++                } else if (!messageObject.isAnyKindOfSticker()) {
+                     currentPhotoObject = FileLoader.getClosestPhotoSizeWithSize(messageObject.photoThumbs, AndroidUtilities.getPhotoSize());
+                     photoParentObject = messageObject.photoThumbsObject;
+                     boolean useFullWidth = false;
+@@ -11974,12 +11995,14 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+             edited = false;
+         } else if (currentPosition == null || currentMessagesGroup == null || currentMessagesGroup.messages.isEmpty()) {
+             edited = (messageObject.messageOwner.flags & TLRPC.MESSAGE_FLAG_EDITED) != 0 || messageObject.isEditing();
++            deleted = messageObject.messageOwner.isDeleted;
+         } else {
+             edited = false;
+             hasReplies = currentMessagesGroup.messages.get(0).hasReplies();
+             if (!currentMessagesGroup.messages.get(0).messageOwner.edit_hide) {
+                 for (int a = 0, size = currentMessagesGroup.messages.size(); a < size; a++) {
+                     MessageObject object = currentMessagesGroup.messages.get(a);
++                    deleted = object.messageOwner.isDeleted;
+                     if ((object.messageOwner.flags & TLRPC.MESSAGE_FLAG_EDITED) != 0 || object.isEditing()) {
+                         edited = true;
+                         break;
+@@ -11995,8 +12018,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+             }
+         } else if (currentMessageObject.scheduled && currentMessageObject.messageOwner.date == 0x7FFFFFFE) {
+             timeString = "";
+-        } else if (edited) {
+-            timeString = LocaleController.getString("EditedMessage", R.string.EditedMessage) + " " + LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000);
++        } else if (edited || (deleted && MessagesController.getTelegraherSettings(currentAccount).getBoolean("EnableChatDeleteMark", true))) {
++            timeString = (deleted ? LocaleController.getString("DeletedMessage", R.string.DeletedMessage) : LocaleController.getString("EditedMessage", R.string.EditedMessage)) + " " + LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000);
+         } else {
+             timeString = LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000);
+         }
+@@ -12353,7 +12376,12 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                 }
+ 
+                 forwardedNameWidth = getMaxNameWidth();
+-                String forwardedString = getForwardedMessageText(messageObject);
++                String forwardedString;
++                if (MessagesController.getGlobalTelegraherSettings().getBoolean("RealForwardedMessageTime", true)) {
++                    forwardedString = String.format("¶ %s", LocaleController.formatDateBitch(messageObject.messageOwner.fwd_from.date, false));
++                } else {
++                    forwardedString = getForwardedMessageText(messageObject);
++                }
+                 if (hasPsaHint) {
+                     forwardedNameWidth -= AndroidUtilities.dp(36);
+                 }
+@@ -12737,6 +12765,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+     }
+ 
+     private Object getAuthorStatus() {
++        if (MessagesController.getGlobalTelegraherSettings().getBoolean("GraheriumDisableEmojiStatus", false)) return null;
+         if (currentUser != null) {
+             if (currentUser.emoji_status instanceof TLRPC.TL_emojiStatusUntil && ((TLRPC.TL_emojiStatusUntil) currentUser.emoji_status).until > (int) (System.currentTimeMillis() / 1000)) {
+                 return ((TLRPC.TL_emojiStatusUntil) currentUser.emoji_status).document_id;
+@@ -15146,7 +15175,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                 captionX += transitionParams.deltaLeft;
+             }
+         }
+-        
++
+         if (isRoundVideo && transitionParams.animateDrawBackground) {
+             captionY += (1f - getVideoTranscriptionProgress()) * AndroidUtilities.roundMessageSize;
+         }
+@@ -18750,8 +18779,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
+                     animatedEmojiStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, ChatMessageCell.this, animatedEmojiStack, currentMessageObject.textLayoutBlocks);
+                 }
+             }
+-            if (edited && !lastDrawingEdited && timeLayout != null) {
+-                String editedStr = LocaleController.getString("EditedMessage", R.string.EditedMessage);
++            if ((edited || (deleted && MessagesController.getTelegraherSettings(currentAccount).getBoolean("EnableChatDeleteMark", true))) && !lastDrawingEdited && timeLayout != null) {
++                String editedStr = deleted ? LocaleController.getString("DeletedMessage", R.string.DeletedMessage) : LocaleController.getString("EditedMessage", R.string.EditedMessage);
+                 CharSequence text = timeLayout.getText();
+                 int i = text.toString().indexOf(editedStr);
+                 if (i >= 0) {

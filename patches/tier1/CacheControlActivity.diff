@@ -1,0 +1,162 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/CacheControlActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/CacheControlActivity.java
+index a5cc6db47..236026844 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/CacheControlActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/CacheControlActivity.java
+@@ -11,6 +11,7 @@ package org.telegram.ui;
+ import android.animation.Animator;
+ import android.animation.ObjectAnimator;
+ import android.animation.ValueAnimator;
++import android.app.ActivityManager;
+ import android.content.Context;
+ import android.content.DialogInterface;
+ import android.content.pm.PackageManager;
+@@ -48,6 +49,7 @@ import androidx.recyclerview.widget.DefaultItemAnimator;
+ import androidx.recyclerview.widget.LinearLayoutManager;
+ import androidx.recyclerview.widget.RecyclerView;
+ 
++import com.evildayz.code.telegraher.TelegraherSettingsActivity;
+ import org.telegram.messenger.AndroidUtilities;
+ import org.telegram.messenger.BotWebViewVibrationEffect;
+ import org.telegram.messenger.CacheByChatsController;
+@@ -83,25 +85,8 @@ import org.telegram.ui.Cells.TextCell;
+ import org.telegram.ui.Cells.TextCheckBoxCell;
+ import org.telegram.ui.Cells.TextInfoPrivacyCell;
+ import org.telegram.ui.Cells.TextSettingsCell;
+-import org.telegram.ui.Components.AlertsCreator;
+-import org.telegram.ui.Components.AnimatedFloat;
+-import org.telegram.ui.Components.AnimatedTextView;
+-import org.telegram.ui.Components.BackupImageView;
+-import org.telegram.ui.Components.CacheChart;
+-import org.telegram.ui.Components.CheckBox2;
+-import org.telegram.ui.Components.CubicBezierInterpolator;
+-import org.telegram.ui.Components.FlickerLoadingView;
+-import org.telegram.ui.Components.HideViewAfterAnimation;
+-import org.telegram.ui.Components.LayoutHelper;
++import org.telegram.ui.Components.*;
+ import org.telegram.ui.Components.ListView.AdapterWithDiffUtils;
+-import org.telegram.ui.Components.LoadingDrawable;
+-import org.telegram.ui.Components.NestedSizeNotifierLayout;
+-import org.telegram.ui.Components.RecyclerListView;
+-import org.telegram.ui.Components.SlideChooseView;
+-import org.telegram.ui.Components.StorageDiagramView;
+-import org.telegram.ui.Components.StorageUsageView;
+-import org.telegram.ui.Components.TypefaceSpan;
+-import org.telegram.ui.Components.UndoView;
+ import org.telegram.ui.Storage.CacheModel;
+ 
+ import java.io.File;
+@@ -111,6 +96,9 @@ import java.util.Collections;
+ import java.util.HashSet;
+ import java.util.Objects;
+ 
++import static android.content.Context.ACTIVITY_SERVICE;
++import static org.webrtc.ContextUtils.getApplicationContext;
++
+ public class CacheControlActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
+ 
+     private static final int VIEW_TYPE_INFO = 1;
+@@ -192,10 +180,14 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+     private static final int delete_id = 1;
+     private static final int other_id = 2;
+     private static final int clear_database_id = 3;
++    private static final int kaboomButtonId = 1337;
++    private static final int graherButtonId = 1338;
+     private boolean loadingDialogs;
+     private NestedSizeNotifierLayout nestedSizeNotifierLayout;
+ 
+     private ActionBarMenuSubItem clearDatabaseItem;
++    private ActionBarMenuSubItem kaboomDurovItem;
++    private ActionBarMenuSubItem graherItem;
+     private void updateDatabaseItemSize() {
+         if (clearDatabaseItem != null) {
+             SpannableStringBuilder string = new SpannableStringBuilder();
+@@ -206,6 +198,8 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+ //            string.append(databaseSizeString);
+             clearDatabaseItem.setText(string);
+         }
++        if (kaboomDurovItem != null) kaboomDurovItem.setText("Kaboom");
++        if (graherItem != null) graherItem.setText("\uD83C\uDCCF \uD83D\uDD1E \uD83D\uDC6F");
+     }
+ 
+     @Override
+@@ -512,12 +506,6 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+                 if (cacheModel != null) {
+                     cacheModel.add(addToType, fileInfo);
+                 }
+-                //TODO measure for other accounts
+-//                for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+-//                    if (i != currentAccount && UserConfig.getInstance(currentAccount).isClientActivated()) {
+-//                        FileLoader.getInstance(currentAccount).getFileDatabase().getFileDialogId(fileEntry);
+-//                    }
+-//                }
+             }
+         }
+     }
+@@ -975,6 +963,10 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+                    clearSelectedFiles();
+                 } else if (id == clear_database_id) {
+                     clearDatabase();
++                } else if (id == kaboomButtonId) {
++                    kaboomDurov(getParentActivity());
++                } else if (id == graherButtonId) {
++                    presentFragment(new TelegraherSettingsActivity());
+                 }
+             }
+         });
+@@ -1011,6 +1003,17 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+         clearDatabaseItem = otherItem.addSubItem(clear_database_id, R.drawable.msg_delete, LocaleController.getString("ClearLocalDatabase", R.string.ClearLocalDatabase));
+         clearDatabaseItem.setIconColor(Theme.getColor(Theme.key_dialogRedIcon));
+         clearDatabaseItem.setTextColor(Theme.getColor(Theme.key_dialogTextRed2));
++
++        kaboomDurovItem = otherItem.addSubItem(kaboomButtonId, R.drawable.ic_masks_msk1, "Kaboom");
++        kaboomDurovItem.setIconColor(Theme.getColor(Theme.key_dialogRedIcon));
++        kaboomDurovItem.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteRedText));
++
++        switch (MessagesController.getGlobalTelegraherSettings().getInt("ShowTelegraherMenu2", 0)) {
++            case 0:
++            case 2:
++                graherItem = otherItem.addSubItem(graherButtonId, R.drawable.msg_report_xxx, "\uD83C\uDCCF \uD83D\uDD1E \uD83D\uDC6F");
++                break;
++        }
+         updateDatabaseItemSize();
+ 
+         listAdapter = new ListAdapter(context);
+@@ -1298,6 +1301,30 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+         FilesMigrationService.checkBottomSheet(this);
+     }
+ 
++    private void kaboomDurov(Context context) {
++        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
++        builder.setTitle("Kaboom");
++        builder.setMessage("Kaboom??");
++        builder.setPositiveButton("Kaboom!", (dialogInterface, i) -> {
++            try {
++                if (Build.VERSION_CODES.KITKAT <= Build.VERSION.SDK_INT) {
++                    ((ActivityManager) context.getSystemService(ACTIVITY_SERVICE)).clearApplicationUserData();
++                } else {
++                    Runtime.getRuntime().exec("pm clear " + getApplicationContext().getPackageName());
++                }
++            } catch (Exception durovrelogin) {
++                durovrelogin.printStackTrace();
++            }
++        });
++        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
++        AlertDialog dialog = builder.create();
++        showDialog(dialog);
++        TextView button = (TextView) dialog.getButton(DialogInterface.BUTTON_POSITIVE);
++        if (button != null) {
++            button.setTextColor(Theme.getColor(Theme.key_dialogTextRed2));
++        }
++    }
++
+     private void clearDatabase() {
+         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+         builder.setTitle(LocaleController.getString("LocalDatabaseClearTextTitle", R.string.LocalDatabaseClearTextTitle));
+@@ -1316,6 +1343,7 @@ public class CacheControlActivity extends BaseFragment implements NotificationCe
+             progressDialog.showDelayed(500);
+             MessagesController.getInstance(currentAccount).clearQueryTime();
+             getMessagesStorage().clearLocalDatabase();
++
+         });
+         AlertDialog alertDialog = builder.create();
+         showDialog(alertDialog);

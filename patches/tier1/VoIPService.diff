@@ -1,0 +1,149 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/messenger/voip/VoIPService.java b/TMessagesProj/src/main/java/org/telegram/messenger/voip/VoIPService.java
+index 2a1a8e0db..8df5f1554 100755
+--- a/TMessagesProj/src/main/java/org/telegram/messenger/voip/VoIPService.java
++++ b/TMessagesProj/src/main/java/org/telegram/messenger/voip/VoIPService.java
+@@ -80,6 +80,9 @@ import android.widget.Toast;
+ 
+ import androidx.annotation.Nullable;
+ 
++import com.evildayz.code.telegraher.ThePenisMightierThanTheSword;
++import com.google.android.exoplayer2.util.Log;
++
+ import org.json.JSONObject;
+ import org.telegram.messenger.AccountInstance;
+ import org.telegram.messenger.AndroidUtilities;
+@@ -357,7 +360,6 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 		@Override
+ 		public void onServiceConnected(int profile, BluetoothProfile proxy) {
+ 			try {
+-				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+ 					for (BluetoothDevice device : proxy.getConnectedDevices()) {
+ 						if (proxy.getConnectionState(device) != BluetoothProfile.STATE_CONNECTED) {
+ 							continue;
+@@ -365,7 +367,6 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 						currentBluetoothDeviceName = device.getName();
+ 						break;
+ 					}
+-				}
+ 				BluetoothAdapter.getDefaultAdapter().closeProfileProxy(profile, proxy);
+ 				fetchingBluetoothDeviceName = false;
+ 			} catch (Throwable e) {
+@@ -2313,7 +2314,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 					hashes.remove(oldest);
+ 				}
+ 			}
+-			nprefs.edit().putStringSet("calls_access_hashes", hashes).commit();
++			nprefs.edit().putStringSet("calls_access_hashes", hashes).apply();
+ 
+ 			boolean sysAecAvailable = false, sysNsAvailable = false;
+ 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+@@ -2441,6 +2442,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 			if (spPlayId != 0) {
+ 				soundPool.stop(spPlayId);
+ 			}
++			if (MessagesController.getGlobalTelegraherSettings().getBoolean("VoipDisableStartBeep", false)) return;
+ 			spPlayId = soundPool.play(spConnectingId, 1, 1, 0, -1, 1);
+ 			if (spPlayId == 0) {
+ 				AndroidUtilities.runOnUIThread(connectingSoundRunnable = new Runnable() {
+@@ -2863,7 +2865,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 			builder.setSmallIcon(isMicMute() ? R.drawable.voicechat_muted : R.drawable.voicechat_active);
+ 		} else {
+ 			builder.setContentTitle(LocaleController.getString("VoipOutgoingCall", R.string.VoipOutgoingCall));
+-			builder.setSmallIcon(R.drawable.notification);
++			builder.setSmallIcon(ThePenisMightierThanTheSword.getNotificationIcon());
+ 		}
+ 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+ 			Intent endIntent = new Intent(this, VoIPActionsReceiver.class);
+@@ -3339,7 +3341,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 			if (error == null) {
+ 				String data = ((TLRPC.TL_dataJSON) response).data;
+ 				Instance.setGlobalServerConfig(data);
+-				preferences.edit().putString("voip_server_config", data).commit();
++				preferences.edit().putString("voip_server_config", data).apply();
+ 			}
+ 		});
+ 	}
+@@ -3373,23 +3375,24 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 	}
+ 
+ 	public static String convertStreamToString(InputStream is) throws Exception {
+-		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+-		StringBuilder sb = new StringBuilder();
+-		String line = null;
+-		while ((line = reader.readLine()) != null) {
+-			sb.append(line).append("\n");
+-		}
+-		reader.close();
++        StringBuilder sb = new StringBuilder();
++        String line;
++        try(BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
++            while ((line = reader.readLine()) != null) {
++                sb.append(line).append("\n");
++            }
++        }
+ 		return sb.toString();
+ 	}
+ 
+-	public static String getStringFromFile(String filePath) throws Exception {
+-		File fl = new File(filePath);
+-		FileInputStream fin = new FileInputStream(fl);
+-		String ret = convertStreamToString(fin);
+-		fin.close();
+-		return ret;
+-	}
++    public static String getStringFromFile(String filePath) throws Exception {
++        File fl = new File(filePath);
++        String ret;
++        try (FileInputStream fin = new FileInputStream(fl)) {
++            ret = convertStreamToString(fin);
++        }
++        return ret;
++    }
+ 
+ 	private void onTgVoipStop(Instance.FinalState finalState) {
+ 		if (user == null) {
+@@ -3402,7 +3405,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 				e.printStackTrace();
+ 			}
+ 		}
+-		
++
+ 		if (needRateCall || forceRating || finalState.isRatingSuggested) {
+ 			startRatingActivity();
+ 			needRateCall = false;
+@@ -3506,7 +3509,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 			if (groupCall != null) {
+ 				bldr.setSmallIcon(isMicMute() ? R.drawable.voicechat_muted : R.drawable.voicechat_active);
+ 			} else {
+-				bldr.setSmallIcon(R.drawable.notification);
++				bldr.setSmallIcon(ThePenisMightierThanTheSword.getNotificationIcon());
+ 			}
+ 			startForeground(ID_ONGOING_CALL_NOTIFICATION, bldr.build());
+ 		}
+@@ -3579,7 +3582,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 			WebRtcAudioTrack.setAudioStreamType(hasRtmpStream() ? AudioManager.USE_DEFAULT_STREAM_TYPE : AudioManager.STREAM_VOICE_CALL);
+ 		}
+ 
+-		needPlayEndSound = true;
++		needPlayEndSound = !MessagesController.getGlobalTelegraherSettings().getBoolean("VoipDisableEndBeep", false);
+ 		AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+ 		if (!USE_CONNECTION_SERVICE) {
+ 			Utilities.globalQueue.postRunnable(() -> {
+@@ -3915,7 +3918,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 		Notification.Builder builder = new Notification.Builder(this)
+ 				.setContentTitle(video ? LocaleController.getString("VoipInVideoCallBranding", R.string.VoipInVideoCallBranding) : LocaleController.getString("VoipInCallBranding", R.string.VoipInCallBranding))
+ 				.setContentText(name)
+-				.setSmallIcon(R.drawable.notification)
++				.setSmallIcon(ThePenisMightierThanTheSword.getNotificationIcon())
+ 				.setSubText(subText)
+ 				.setContentIntent(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE));
+ 		Uri soundProviderUri = Uri.parse("content://" + ApplicationLoader.getApplicationId() + ".call_sound_provider/start_ringing");
+@@ -3936,7 +3939,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
+ 					}
+ 					nm.deleteNotificationChannel("incoming_calls3" + chanIndex);
+ 					chanIndex++;
+-					nprefs.edit().putInt("calls_notification_channel", chanIndex).commit();
++					nprefs.edit().putInt("calls_notification_channel", chanIndex).apply();
+ 				} else {
+ 					needCreate = false;
+ 				}

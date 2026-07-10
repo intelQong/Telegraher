@@ -1,0 +1,21 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/Cells/UserCell.java b/TMessagesProj/src/main/java/org/telegram/ui/Cells/UserCell.java
+index 90f7509d0..401d34de8 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/Cells/UserCell.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/Cells/UserCell.java
+@@ -23,6 +23,7 @@ import android.widget.TextView;
+ 
+ import androidx.annotation.NonNull;
+ 
++import com.evildayz.code.telegraher.ThePenisMightierThanTheSword;
+ import org.telegram.messenger.AndroidUtilities;
+ import org.telegram.messenger.DialogObject;
+ import org.telegram.messenger.Emoji;
+@@ -479,7 +480,7 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
+             }
+             nameTextView.setText(name);
+         }
+-        if (currentUser != null && MessagesController.getInstance(currentAccount).isPremiumUser(currentUser)) {
++        if (currentUser != null && ThePenisMightierThanTheSword.starrMark(MessagesController.getInstance(currentAccount).isPremiumUser(currentUser))) {
+             if (currentUser.emoji_status instanceof TLRPC.TL_emojiStatusUntil && ((TLRPC.TL_emojiStatusUntil) currentUser.emoji_status).until > (int) (System.currentTimeMillis() / 1000)) {
+                 emojiStatus.set(((TLRPC.TL_emojiStatusUntil) currentUser.emoji_status).document_id, false);
+                 emojiStatus.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
