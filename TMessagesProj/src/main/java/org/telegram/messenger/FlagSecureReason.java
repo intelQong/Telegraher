@@ -8,12 +8,19 @@ import java.util.HashMap;
 public class FlagSecureReason {
 
     private static HashMap<Window, Integer> currentSecureReasons;
+    private static HashMap<Window, Integer> currentForceSecureReasons;
 
     private final Window window;
+    private final boolean force;
     private final FlagSecureCondition condition;
 
     public FlagSecureReason(Window window, FlagSecureCondition condition) {
+        this(window, false, condition);
+    }
+
+    public FlagSecureReason(Window window, boolean force, FlagSecureCondition condition) {
         this.window = window;
+        this.force = force;
         this.condition = condition;
     }
 
@@ -47,13 +54,17 @@ public class FlagSecureReason {
         if (currentSecureReasons == null) {
             currentSecureReasons = new HashMap<>();
         }
+        if (currentForceSecureReasons == null) {
+            currentForceSecureReasons = new HashMap<>();
+        }
 
-        Integer count = currentSecureReasons.get(window);
+        HashMap<Window, Integer> target = force ? currentForceSecureReasons : currentSecureReasons;
+        Integer count = target.get(window);
         int newCount = Math.max(0, (count == null ? 0 : count) + add);
         if (newCount <= 0) {
-            currentSecureReasons.remove(window);
+            target.remove(window);
         } else {
-            currentSecureReasons.put(window, newCount);
+            target.put(window, newCount);
         }
 
         updateWindowSecure(window);
@@ -74,6 +85,9 @@ public class FlagSecureReason {
     }
 
     public static boolean isSecuredNow(Window window) {
+        if (currentForceSecureReasons != null && currentForceSecureReasons.get(window) != null) {
+            return true;
+        }
         if (SharedConfig.allowScreenCapture) return false;
         return currentSecureReasons != null && currentSecureReasons.get(window) != null;
     }
