@@ -72,13 +72,29 @@ public final class SecretMediaExport implements AutoCloseable {
             File enc = new File(plain.getAbsolutePath() + ".enc");
             File key = new File(FileLoader.getInternalCacheDir(), plain.getName() + ".enc.key");
             if (enc.isFile() && key.isFile()) {
-                File tmp = File.createTempFile("graher_ttl_", "." + extension(message, plain), FileLoader.getDirectory(FileLoader.MEDIA_DIR_CACHE));
+                File tmp = File.createTempFile("graher_ttl_", "." + extension(message, plain), FileLoader.getInternalCacheDir());
                 decryptCtrCopy(enc, key, tmp);
                 return new SecretMediaExport(tmp, true);
             }
         }
 
         throw new IOException("ttl media file is not on disk");
+    }
+
+    public static void cleanStaleTempFiles() {
+        Utilities.globalQueue.postRunnable(() -> {
+            try {
+                File dir = FileLoader.getInternalCacheDir();
+                if (dir != null && dir.isDirectory()) {
+                    File[] files = dir.listFiles((d, name) -> name.startsWith("graher_ttl_"));
+                    if (files != null) {
+                        for (File f : files) {
+                            f.delete();
+                        }
+                    }
+                }
+            } catch (Throwable ignore) {}
+        });
     }
 
     private static void decryptCtrCopy(File enc, File keyFile, File out) throws IOException {

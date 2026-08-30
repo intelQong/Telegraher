@@ -195,6 +195,7 @@ public class ApplicationLoader extends Application {
 
         SharedConfig.loadConfig();
         SharedPrefsHelper.init(applicationContext);
+        com.evildayz.code.telegraher.SecretMediaExport.cleanStaleTempFiles();
 
         try {
             LocaleController.getInstance();
