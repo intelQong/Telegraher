@@ -348,7 +348,14 @@ void *ConnectionsManager::ThreadProc(void *data) {
     if (LOGS_ENABLED) DEBUG_D("network thread started");
     auto networkManager = (ConnectionsManager *) (data);
 #ifdef ANDROID
-    javaVm->AttachCurrentThread(&jniEnv[networkManager->instanceNum], nullptr);
+    {
+        static std::mutex jniMutex;
+        std::lock_guard<std::mutex> lock(jniMutex);
+        if ((size_t) networkManager->instanceNum >= jniEnv.size()) {
+            jniEnv.resize(networkManager->instanceNum + 10, nullptr);
+        }
+        javaVm->AttachCurrentThread(&jniEnv[networkManager->instanceNum], nullptr);
+    }
 #endif
     if (networkManager->currentUserId != 0 && networkManager->pushConnectionEnabled) {
         Datacenter *datacenter = networkManager->getDatacenterWithId(networkManager->currentDatacenterId);

@@ -275,6 +275,22 @@ extern JavaVM *javaVm;
 extern std::vector<JNIEnv*> jniEnv;
 extern jclass jclass_ByteBuffer;
 extern jmethodID jclass_ByteBuffer_allocateDirect;
+
+inline JNIEnv *getJNIEnv(int32_t instanceNum) {
+    JNIEnv *env = nullptr;
+    if (javaVm != nullptr) {
+        if (javaVm->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK) {
+            return env;
+        }
+        if (javaVm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            return env;
+        }
+    }
+    if (instanceNum >= 0 && (size_t) instanceNum < jniEnv.size()) {
+        return jniEnv[instanceNum];
+    }
+    return nullptr;
+}
 #endif
 
 #endif
