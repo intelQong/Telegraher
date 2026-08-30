@@ -224,6 +224,7 @@ public class SharedConfig {
     public static long lastUptimeMillis;
     public static int badPasscodeTries;
     public static byte[] passcodeSalt = new byte[0];
+    public static byte[] duressSalt = new byte[0];
     public static boolean appLocked;
     public static int autoLockIn = 60 * 60;
 
@@ -435,6 +436,7 @@ public class SharedConfig {
                 editor.putString("passcodeHash1", passcodeHash);
                 editor.putString("duressHash", duressHash);
                 editor.putString("passcodeSalt", passcodeSalt.length > 0 ? Base64.encodeToString(passcodeSalt, Base64.DEFAULT) : "");
+                editor.putString("duressSalt", duressSalt.length > 0 ? Base64.encodeToString(duressSalt, Base64.DEFAULT) : "");
                 editor.putBoolean("appLocked", appLocked);
                 editor.putInt("passcodeType", passcodeType);
                 editor.putLong("passcodeRetryInMs", passcodeRetryInMs);
@@ -579,6 +581,13 @@ public class SharedConfig {
                 passcodeSalt = Base64.decode(passcodeSaltString, Base64.DEFAULT);
             } else {
                 passcodeSalt = new byte[0];
+            }
+
+            String duressSaltString = preferences.getString("duressSalt", "");
+            if (duressSaltString.length() > 0) {
+                duressSalt = Base64.decode(duressSaltString, Base64.DEFAULT);
+            } else {
+                duressSalt = new byte[0];
             }
             lastUpdateCheckTime = preferences.getLong("appUpdateCheckTime", System.currentTimeMillis());
             try {
@@ -841,24 +850,81 @@ public class SharedConfig {
         return true;
     }
 
+    public static final int PBKDF2_ITERATIONS = 100000;
+
+    public static String computePasscodeHash(String passcode, byte[] salt) {
+        if (passcode == null || salt == null || salt.length == 0) {
+            return "";
+        }
+        try {
+            javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(passcode.toCharArray(), salt, PBKDF2_ITERATIONS, 256);
+            javax.crypto.SecretKeyFactory skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            return "pbkdf2$" + PBKDF2_ITERATIONS + "$" + Utilities.bytesToHex(hash);
+        } catch (Exception e) {
+            FileLog.e(e);
+            try {
+                byte[] passcodeBytes = passcode.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                byte[] bytes = new byte[32 + passcodeBytes.length];
+                System.arraycopy(salt, 0, bytes, 0, 16);
+                System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
+                System.arraycopy(salt, 0, bytes, passcodeBytes.length + 16, 16);
+                return Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
+            } catch (Exception ex) {
+                FileLog.e(ex);
+                return "";
+            }
+        }
+    }
+
     public static boolean checkPasscode(String passcode) {
-        return checkPasscode(passcodeHash, passcode);
+        boolean valid = checkPasscode(passcodeHash, passcode, passcodeSalt);
+        if (valid && passcodeHash != null && !passcodeHash.isEmpty() && !passcodeHash.startsWith("pbkdf2$")) {
+            passcodeHash = computePasscodeHash(passcode, passcodeSalt);
+            saveConfig();
+        }
+        return valid;
     }
 
     public static boolean checkDuress(String passcode) {
-        if (duressHash.isEmpty()) return false;
-        return checkPasscode(duressHash, passcode);
+        if (duressHash == null || duressHash.isEmpty()) return false;
+        byte[] salt = (duressSalt != null && duressSalt.length > 0) ? duressSalt : passcodeSalt;
+        boolean valid = checkPasscode(duressHash, passcode, salt);
+        if (valid && !duressHash.startsWith("pbkdf2$")) {
+            duressHash = computePasscodeHash(passcode, salt);
+            saveConfig();
+        }
+        return valid;
     }
 
     public static boolean checkPasscode(String sha256, String passcode) {
+        return checkPasscode(sha256, passcode, passcodeSalt);
+    }
+
+    public static boolean checkPasscode(String sha256, String passcode, byte[] salt) {
+        if (sha256 == null || sha256.isEmpty() || passcode == null || salt == null || salt.length == 0) {
+            return false;
+        }
         try {
-            byte[] passcodeBytes = passcode.getBytes("UTF-8");
+            if (sha256.startsWith("pbkdf2$")) {
+                String[] parts = sha256.split("\\$");
+                if (parts.length == 3) {
+                    int iterations = Integer.parseInt(parts[1]);
+                    String expectedHex = parts[2];
+                    javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(passcode.toCharArray(), salt, iterations, 256);
+                    javax.crypto.SecretKeyFactory skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+                    byte[] hash = skf.generateSecret(spec).getEncoded();
+                    String actualHex = Utilities.bytesToHex(hash);
+                    return expectedHex.equalsIgnoreCase(actualHex);
+                }
+            }
+            byte[] passcodeBytes = passcode.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             byte[] bytes = new byte[32 + passcodeBytes.length];
-            System.arraycopy(passcodeSalt, 0, bytes, 0, 16);
+            System.arraycopy(salt, 0, bytes, 0, 16);
             System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
-            System.arraycopy(passcodeSalt, 0, bytes, passcodeBytes.length + 16, 16);
+            System.arraycopy(salt, 0, bytes, passcodeBytes.length + 16, 16);
             String hash = Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
-            return sha256.equals(hash);
+            return sha256.equalsIgnoreCase(hash);
         } catch (Exception e) {
             FileLog.e(e);
         }
@@ -875,6 +941,7 @@ public class SharedConfig {
         passcodeHash = "";
         duressHash = "";
         passcodeSalt = new byte[0];
+        duressSalt = new byte[0];
         autoLockIn = 60 * 60;
         lastPauseTime = 0;
         useFingerprintLock = true;

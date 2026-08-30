@@ -288,6 +288,8 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                                 .setPositiveButton(LocaleController.getString(R.string.DisablePasscodeTurnOff), (dialog, which) -> {
                                     SharedConfig.passcodeHash = "";
                                     SharedConfig.duressHash = "";
+                                    SharedConfig.passcodeSalt = new byte[0];
+                                    SharedConfig.duressSalt = new byte[0];
                                     SharedConfig.appLocked = false;
                                     SharedConfig.saveConfig();
                                     getMediaDataController().buildShortcuts();
@@ -312,6 +314,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                                 .setPositiveButton(LocaleController.getString(R.string.DisablePasscodeTurnOff), (dialog, which) -> {
                                     SharedConfig.duressHash = "";
+                                    SharedConfig.duressSalt = new byte[0];
                                     SharedConfig.saveConfig();
                                     getMediaDataController().buildShortcuts();
                                     int count = listView.getChildCount();
@@ -1020,21 +1023,19 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
 
             boolean isFirst = (isDuressBruh(type) ? SharedConfig.duressHash.isEmpty() : SharedConfig.passcodeHash.isEmpty());
             try {
-                if (SharedConfig.passcodeSalt.length == 0) {
-                    SharedConfig.passcodeSalt = new byte[16];
-                    Utilities.random.nextBytes(SharedConfig.passcodeSalt);
+                if (isDuressBruh(type)) {
+                    if (SharedConfig.duressSalt == null || SharedConfig.duressSalt.length == 0) {
+                        SharedConfig.duressSalt = new byte[16];
+                        Utilities.random.nextBytes(SharedConfig.duressSalt);
+                    }
+                    SharedConfig.duressHash = SharedConfig.computePasscodeHash(firstPassword, SharedConfig.duressSalt);
+                } else {
+                    if (SharedConfig.passcodeSalt == null || SharedConfig.passcodeSalt.length == 0) {
+                        SharedConfig.passcodeSalt = new byte[16];
+                        Utilities.random.nextBytes(SharedConfig.passcodeSalt);
+                    }
+                    SharedConfig.passcodeHash = SharedConfig.computePasscodeHash(firstPassword, SharedConfig.passcodeSalt);
                 }
-                byte[] passcodeBytes = firstPassword.getBytes(StandardCharsets.UTF_8);
-                byte[] bytes = new byte[32 + passcodeBytes.length];
-                System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, 0, 16);
-                System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
-                System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, passcodeBytes.length + 16, 16);
-                String hexString = Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
-                if (isDuressBruh(type))
-                    SharedConfig.duressHash = hexString;
-                else
-                    SharedConfig.passcodeHash = hexString;
-
             } catch (Exception e) {
                 FileLog.e(e);
             }
